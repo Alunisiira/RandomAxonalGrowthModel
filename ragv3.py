@@ -35,6 +35,156 @@ import numpy as np
 # initializing the generator of random numbers
 random.seed()
 
+class n3Point():
+	
+	def __init__ (self, x, y, z):
+		self.x = x
+		self.y = y
+		self.z = z
+
+	def __add__ (self, p):
+		return self.__class__(self.x + p.x, self.y + p.y, self.z + p.z)
+
+	def __sub__ (self, p):
+		return self.__class__(self.x - p.x, self.y - p.y, self.z - p.z)
+		
+	def __mul__ (self, k):
+		return self.__class__(self.x * k, self.y * k, self.z * k)
+		
+	def __div__ (self, k):
+		return self.__class__(self.x / k, self.y / k, self.z / k)
+		
+	def __truediv__ (self, k):
+		return self.__class__(self.x / k, self.y / k, self.z / k)
+		
+	def scalar_product (self, v):
+		return self.x * v.x + self.y * v.y + self.z * v.z	
+	
+	def vector_product (self, v):
+		return self.__class__(self.y * v.z - self.z * v.y, self.z * v.x - self.x * v.z, self.x * v.y - self.y * v.x)
+	
+	def length (self):
+		return sqrt (self.x * self.x + self.y * self.y + self.z * self.z)
+	
+	def distance_to (self, p):
+		return (self - p).length()
+		
+	def __str__(self):
+		""" Returns a readable string.
+		"""
+		return str("(" + str(self.x) + "," + str(self.y) + "," + str(self.z) + ")")
+
+	def __repr__(self):
+		""" Returns a readable string.
+		"""
+		return str("(" + str(self.x) + "," + str(self.y) + "," + str(self.z) + ")")
+		
+
+class n3Line():
+	
+	def __init__(self, *points):
+		""" Simple constructor. Pushes the line by iterating over all points
+		provided. So the last point is the head and the one before last is 
+		the tail.
+		"""		
+		self.head = points[0]
+		for p in points[1:]:
+			self.push(p)
+		
+	def push (self, p): 
+		""" Pushes the line by adding the point p. The new head is point p 
+			and the new tail is the old head.
+		"""
+		self.tail = self.head
+		self.head = p
+		self.direction_vector = self.head - self.tail
+		self.direction_vector_norm = self.direction_vector / self.direction_vector.length()
+
+	def push_delta (self, p):
+		""" Pushes the line by adding the coordinates form the point p to the
+			actual head as the new head. Finally setting the tail to the old
+			head.
+		"""
+		self.tail = self.head
+		self.head = self.head + p
+		self.direction_vector = self.head - self.tail
+		self.direction_vector_norm = self.direction_vector / self.direction_vector.length()
+
+	def get_middle (self):
+		""" Returns the point representing the middle.
+		"""
+		return self.tail + (self.head - self.tail) / 2 
+
+	def get_head (self):
+		""" Returns the point representing the head.
+		"""
+		return self.head
+		
+	def get_tail (self):
+		""" Returns the point representing the tail.
+		"""
+		return self.tail
+
+	def compute_distance (self, p):		
+		""" Computes the distance between a point p and this line. It is 
+			basically the minimum distance over all the points from the 
+			line and the point p. This is done by computing the perpendicular
+			and then using euclid.		
+		"""		
+		v = (self.tail - p) * -1 
+		r = self.direction_vector.scalar_product(v) / self.direction_vector.length()
+		if r < 0:
+			return self.tail.distance_to(p)
+		elif r > self.direction_vector.length():
+			return self.head.distance_to(p)
+		else:
+			return p.distance_to(self.direction_vector_norm * r + self.tail)
+
+	def get_length (self):
+		""" Returns the length of this line
+		"""
+		return (self.head - self.tail).length()
+
+class n3RectAngle():
+	
+	def __init__ (self, p1, p2, p3, p4, p5, p6, p7, p8): 
+		""" Simple constructor with following ordering of the points.
+		"""		
+		"""Orders points according to: Most left Bottom Point is first, then
+			left upper, then right upper and finally right bottom. 	The 
+			points are determined via the distance to coordinate origin
+			and a point on the x axis lying to the right of the rectangle.
+		"""
+		self.points = [p1, p2, p3, p4, p5, p6, p7, p8]		
+		
+		max_y = 0
+		for i in self.points:
+			if i.y > max_y:
+				max_y = i.y
+		max_x = 0
+		for i in self.points:
+			if i.y > max_x:
+				max_x = i.y
+
+		self.left_lower_bottom, self.right_top_upper = self.init_get_extreme_points(self.points, n3Point(0, 0, 0))
+		self.left_lower_upper, self.right_top_bottom = self.init_get_extreme_points(self.points, n3Point(0, max_y, 0))
+		self.right_lower_upper, self.left_top_bottom = self.init_get_extreme_points(self.points, n3Point(max_x, max_y, 0))
+		self.right_lower_bottom, self.left_top_upper = self.init_get_extreme_points(self.points, n3Point(max_x, 0, 0))
+		
+	def init_get_extreme_points(self, liste, p):
+		for i in xrange(8):
+			l = (i.distance_to (p), i)
+		l.sort(lambda x,y: -1 if x < y else 1)
+		return (l[0],l[7])
+		
+		
+		
+	def get_middle (self):
+		""" Returns the point in the middle of the rectangle
+		"""
+		return self.left_lower_bottom + (self.right_top_upper - self.left_lower_bottom) / 2
+
+
 
 class n2Point():
 	"""Actually this is a location vector. And therefore some vector operations are supported.
