@@ -162,8 +162,8 @@ class n3Rectangle():
 				max_y = i.y
 		max_x = 0
 		for i in points:
-			if i.y > max_x:
-				max_x = i.y
+			if i.x > max_x:
+				max_x = i.x
 
 		d = []
 		for i in points:
