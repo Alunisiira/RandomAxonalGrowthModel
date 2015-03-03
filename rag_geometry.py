@@ -8,7 +8,7 @@ Created on Mon Mar 02 17:33:22 2015
 """
 from math import sqrt
 
-class n3Point():
+class n3Point(object):
 	
 	def __init__ (self, x, y, z):
 		self.x = x
@@ -55,7 +55,7 @@ class n3Point():
 		return str("(" + str(self.x) + "," + str(self.y) + "," + str(self.z) + ")")
 		
 
-class n3Line():
+class n3Line(object):
 	
 	def __init__(self, *points):
 		""" Simple constructor. Pushes the line by iterating over all points
@@ -123,7 +123,7 @@ class n3Line():
 		return (self.head - self.tail).length()
  
  
-class n3Sphere ():
+class n3Sphere (object):
 	
 	def __init__ (self, point, radius):
 		self.center = point
@@ -133,7 +133,7 @@ class n3Sphere ():
 		return self.center.distance_to(p) <= self.radius
     
 				
-class n3Ellipsoid ():
+class n3Ellipsoid (object):
 	
 	def __init__ (self, center, x, y, z):
 		self.center = center
@@ -145,7 +145,7 @@ class n3Ellipsoid ():
 		return (p.x * p.x / self.x / self.x + p.y * p.y / self.y / self.y + p.z * p.z / self.z / self.z ) <= 1
 	
 
-class n3Rectangle():
+class n3Rectangle(object):
     
 	def __init__ (self, points): 
 		""" Simple constructor with following ordering of the points.
@@ -171,33 +171,33 @@ class n3Rectangle():
 		d.sort(lambda x,y: -1 if x < y else 1)			
 		if d[0]==d[1]:
 			#idiotic special case, when rectangle was axis parallel and got rotated by 45 degrees
-			self.left_lower_front, self.right_top_back = self.init_get_extreme_points(self.points, n3Point(0, 0.1, 0))
-			self.left_lower_back, self.right_top_front = self.init_get_extreme_points(self.points, n3Point(0, max_y + 0,1, 0))
-			self.right_lower_back, self.left_top_front = self.init_get_extreme_points(self.points, n3Point(max_x, max_y + 0.1, 0))
-			self.right_lower_front, self.left_top_back = self.init_get_extreme_points(self.points, n3Point(max_x, 0.1, 0))
+			self.left_front_lower, self.right_back_top = self.init_get_extreme_points(points, n3Point(0, 0.1, 0))
+			self.left_back_lower, self.right_front_top = self.init_get_extreme_points(points, n3Point(0, max_y + 0,1, 0))
+			self.right_back_lower, self.left_front_top = self.init_get_extreme_points(points, n3Point(max_x, max_y + 0.1, 0))
+			self.right_front_lower, self.left_back_top = self.init_get_extreme_points(points, n3Point(max_x, 0.1, 0))
 		else:
-			self.left_lower_front, self.right_top_back = self.init_get_extreme_points(self.points, n3Point(0, 0, 0))
-			self.left_lower_back, self.right_top_front = self.init_get_extreme_points(self.points, n3Point(0, max_y, 0))
-			self.right_lower_back, self.left_top_front = self.init_get_extreme_points(self.points, n3Point(max_x, max_y, 0))
-			self.right_lower_front, self.left_top_back = self.init_get_extreme_points(self.points, n3Point(max_x, 0, 0))
-		self.inner_radius = ((self.right_lower_front - self.left_lower_front)/2).length()
-		self.middle = self.left_lower_front + (self.right_top_back - self.left_lower_front) / 2
-		self.outer_radius = (self.middle - self.left_lower_front).length()	
-		self.norm_vector_side_bottom = (self.right_lower_front - self.left_lower_front).vector_product(self.left_lower_back - self.left_lower_front)
+			self.left_front_lower, self.right_back_top = self.init_get_extreme_points(points, n3Point(0, 0, 0))
+			self.left_back_lower, self.right_front_top = self.init_get_extreme_points(points, n3Point(0, max_y, 0))
+			self.right_back_lower, self.left_front_top = self.init_get_extreme_points(points, n3Point(max_x, max_y, 0))
+			self.right_front_lower, self.left_back_top = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))
+		self.inner_radius = ((self.right_front_lower - self.left_front_lower)/2).length()
+		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
+		self.outer_radius = (self.middle - self.left_front_lower).length()	
+		self.norm_vector_side_bottom = (self.right_front_lower - self.left_front_lower).vector_product(self.left_back_lower - self.left_front_lower)
 		self.norm_vector_side_bottom = self.norm_vector_side_bottom / self.norm_vector_side_bottom.length()
-		self.norm_vector_side_left = (self.left_lower_front - self.left_top_front).vector_product(self.left_lower_back - self.left_lower_front)		
+		self.norm_vector_side_left = (self.left_front_lower - self.left_front_top).vector_product(self.left_back_lower - self.left_front_lower)		
 		self.norm_vector_side_left = self.norm_vector_side_left / self.norm_vector_side_left.length()
-		self.norm_vector_side_front = (self.left_lower_front - self.right_lower_front).vector_product(self.left_top_front - self.left_lower_front)				
+		self.norm_vector_side_front = (self.left_front_lower - self.right_front_lower).vector_product(self.left_front_top - self.left_front_lower)				
 		self.norm_vector_side_front = self.norm_vector_side_front / self.norm_vector_side_front.length()
 		self.norm_vector_side_top = self.norm_vector_side_bottom * -1
 		self.norm_vector_side_right = self.norm_vector_side_left * -1
 		self.norm_vector_side_back = self.norm_vector_side_front * -1
-		self.hesse_bottom_d = self.norm_vector_side_bottom.scalar_product(self.left_lower_front)
-		self.hesse_left_d = self.norm_vector_side_left.scalar_product(self.left_lower_front)
-		self.hesse_front_d = self.norm_vector_side_front.scalar_product(self.left_lower_front)
-		self.hesse_back_d = self.norm_vector_side_back.scalar_product(self.right_top_back)
-		self.hesse_right_d = self.norm_vector_side_right.scalar_product(self.right_top_back)
-		self.hesse_top_d = self.norm_vector_side_top.scalar_product(self.right_top_back)
+		self.hesse_bottom_d = self.norm_vector_side_bottom.scalar_product(self.left_front_lower)
+		self.hesse_left_d = self.norm_vector_side_left.scalar_product(self.left_front_lower)
+		self.hesse_front_d = self.norm_vector_side_front.scalar_product(self.left_front_lower)
+		self.hesse_back_d = self.norm_vector_side_back.scalar_product(self.right_back_top)
+		self.hesse_right_d = self.norm_vector_side_right.scalar_product(self.right_back_top)
+		self.hesse_top_d = self.norm_vector_side_top.scalar_product(self.right_back_top)
 		
 	def init_get_extreme_points(self, liste, p):
          l = []
@@ -212,7 +212,7 @@ class n3Rectangle():
 		return self.middle
   
 	def get_points(self):
-		return [self.left_lower_front, self.left_lower_back, self.right_lower_back, self.right_lower_front, self.left_top_front, self.left_top_back, self.right_top_back, self.right_top_front]		
+		return [self.left_front_lower, self.left_back_lower, self.right_back_lower, self.right_front_lower, self.left_front_top, self.left_back_top, self.right_back_top, self.right_front_top]		
 		
 	def lies_inside (self, p):
 		d = self.middle.distance_to(p)
@@ -231,13 +231,38 @@ class n3AxisParallelRectangle (n3Rectangle):
 	""" The lines of the rectangle are parallel to the axis.
 	"""	
 	
+	def __init__(self, p1, p7):
+		p2 = n3Point(p1.x, p7.y, p1.z)
+		p3 = n3Point(p7.x, p7.y, p1.z)
+		p4 = n3Point(p7.x, p1.y, p1.z)
+		p5 = n3Point(p1.x, p1.y, p7.z)
+		p6 = n3Point(p1.x, p7.y, p7.z)
+		p8 = n3Point(p7.x, p1.y, p7.z)
+		
+		points = [p1, p2, p3, p4, p5, p6, p7, p8]		
+		
+		max_y = 0
+		for i in points:
+			if i.y > max_y:
+				max_y = i.y
+		max_x = 0
+		for i in points:
+			if i.x > max_x:
+				max_x = i.x
+	
+		self.left_front_lower, self.right_back_top = self.init_get_extreme_points(points, n3Point(0, 0, 0))
+		self.left_back_lower, self.right_front_top = self.init_get_extreme_points(points, n3Point(0, max_y, 0))
+		self.right_back_lower, self.left_front_top = self.init_get_extreme_points(points, n3Point(max_x, max_y, 0))
+		self.right_front_lower, self.left_back_top = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))	
+		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
+	
 	def lies_inside (self, p1):
-		return self.left_lower_front.x <= p1.x <= self.right_lower_front.x and  \
-			self.left_lower_front.y <= p1.y <= self.left_lower_back.y and \
-			self.left_lower_front.z <= p1.z <= self.left_top_front.z
+		return self.left_front_lower.x <= p1.x <= self.right_front_lower.x and  \
+			self.left_front_lower.y <= p1.y <= self.left_back_lower.y and \
+			self.left_front_lower.z <= p1.z <= self.left_front_top.z
 
 
-class n2Point():
+class n2Point(object):
 	"""Actually this is a location vector. And therefore some vector operations are supported.
 	"""		
 
@@ -328,7 +353,7 @@ class n2Point():
 		return self.__class__(self.y, self.x * -1)
 
 
-class n2Line ():
+class n2Line (object):
 	""" This class defines a line. It is defined by 2 points: head and tail.
 		For every push head and tail are newly set and the old ones are 
 		forgotten. Finally it implements also a function computing the distance
@@ -401,7 +426,7 @@ class n2Line ():
 		return (self.head - self.tail).length()
 
 
-class n2Sphere ():
+class n2Sphere (object):
 	
 	def __init__ (self, point, radius):
 		self.center = point
@@ -411,7 +436,7 @@ class n2Sphere ():
 		return self.center.distance_to(p) <= self.radius
     
 				
-class n2Ellipsoid ():
+class n2Ellipsoid (object):
 	
 	def __init__ (self, center, x, y):
 		self.center = center
@@ -422,21 +447,17 @@ class n2Ellipsoid ():
 		return (p.x * p.x / self.x / self.x + p.y * p.y / self.y / self.y) <= 1
 
 
-class n2Rectangle ():
+class n2Rectangle (object):
 	""" This class implements a rectangle and is implemented based on n2Point"""	
 	
-	def __init__ (self, p1, p2): 
+	def __init__ (self, p1, p2, p3, p4): 
 		""" Simple constructor with following ordering of the points.
 		"""		
-		p3 = n2Point(p1.x, p2.y)
-		p4 = n2Point(p2.x, p1.y)
+			
+		points = [p1, p2, p3, p4]
 		
-		max_y = 0
-		for i in self.points:
-			if i.y > max_y:
-				max_y = i.y
 		max_x = 0
-		for i in self.points:
+		for i in points:
 			if i.y > max_x:
 				max_x = i.y
 
@@ -446,11 +467,11 @@ class n2Rectangle ():
 		d.sort(lambda x,y: -1 if x < y else 1)			
 		if d[0]==d[1]:
 			#idiotic special case, when rectangle was axis parallel and got rotated by 45 degrees
-			self.left_front, self.right_back = self.init_get_extreme_points(self.points, n3Point(0, 0.1, 0))
-			self.right_front, self.left_back = self.init_get_extreme_points(self.points, n3Point(max_x, 0.1, 0))
+			self.left_front, self.right_back = self.init_get_extreme_points(points, n3Point(0, 0.1, 0))
+			self.right_front, self.left_back = self.init_get_extreme_points(points, n3Point(max_x, 0.1, 0))
 		else:
-			self.left_front, self.right_back = self.init_get_extreme_points(self.points, n3Point(0, 0, 0))
-			self.right_front, self.left_back = self.init_get_extreme_points(self.points, n3Point(max_x, 0, 0))
+			self.left_front, self.right_back = self.init_get_extreme_points(points, n3Point(0, 0, 0))
+			self.right_front, self.left_back = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))
 		self.inner_radius = ((self.right_front - self.left_front)/2).length()
 		self.middle = self.left_front + (self.right_back - self.left_front) / 2
 		self.outer_radius = (self.middle - self.left_front).length()	
@@ -478,12 +499,12 @@ class n2Rectangle ():
 			is in the left upper corner, the next in the right upper corner
 			and finally the last is in the right bottom.		
 		"""
-		return [self.lbPoint, self.luPoint, self.ruPoint, self.rbPoint,]
+		return [self.left_front, self.left_back, self.right_back, self.right_front,]
 	
 	def get_middle (self):
 		""" Returns the point in the middle of the rectangle
 		"""
-		return self.lbPoint + (self.ruPoint - self.lbPoint) / 2
+		return self.left_front + (self.right_back - self.left_front) / 2
 
 	def lies_inside (self, p):
 		d = self.middle.distance_to(p)
@@ -498,6 +519,20 @@ class n2Rectangle ():
 class n2AxisParallelRectangle (n2Rectangle):
 	""" The lines of the rectangle are parallel to the axis.
 	"""	
+	
+	def __init__(self, p1, p2):
+		p3 = n2Point(p1.x, p2.y)
+		p4 = n2Point(p2.x, p1.y)
+		points = [p1, p2, p3, p4]
+		
+		max_x = 0
+		for i in points:
+			if i.y > max_x:
+				max_x = i.y
+			
+		self.left_front, self.right_back = self.init_get_extreme_points(points, n3Point(0, 0, 0))
+		self.right_front, self.left_back = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))
+		self.middle = self.left_front + (self.right_back - self.left_front) / 2
 	
 	def is_inside (self, p1):
 		return self.lbPoint.x <= p1.x <= self.ruPoint.x and self.lbPoint.y <= p1.y <= self.ruPoint.y
