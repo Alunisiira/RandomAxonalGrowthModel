@@ -7,6 +7,7 @@ Created on Mon Mar 02 17:33:22 2015
 
 """
 from math import sqrt
+from math import radians
 
 class n3Point(object):
 	
@@ -53,6 +54,21 @@ class n3Point(object):
 		""" Returns a readable string.
 		"""
 		return str("(" + str(self.x) + "," + str(self.y) + "," + str(self.z) + ")")
+		
+	def translate_by_degree (self, alpha, beta, gamma):
+		""" Drehung im Uhrzeigersinn
+		"""
+		alpha = radians (alpha)
+		beta = radians (beta)
+		gamma = radians (gamma)		
+		y1 = self.y * cos (alpha) - self.z * sin (alpha)
+		z1 = self.y * sin (alpha)	+ self.z * cos (alpha)		
+		x1 = self.x * cos (beta) + z1 * sin (beta)		
+		z2 = z1 * cos (beta) - self.x * sin (beta)
+		x2 = round(x1 * cos(gamma) - y1 * sin (gamma), 4)
+		y2 = round(x1 * sin(gamma) + y1 * cos (gamma), 4)
+		return self.__class__(x2, y2, z2)
+		
 		
 
 class n3Line(object):
@@ -183,6 +199,10 @@ class n3Rectangle(object):
 		self.inner_radius = ((self.right_front_lower - self.left_front_lower)/2).length()
 		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
 		self.outer_radius = (self.middle - self.left_front_lower).length()	
+		self.update_coords()			
+			
+	def update_coords (self):
+		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
 		self.norm_vector_side_bottom = (self.right_front_lower - self.left_front_lower).vector_product(self.left_back_lower - self.left_front_lower)
 		self.norm_vector_side_bottom = self.norm_vector_side_bottom / self.norm_vector_side_bottom.length()
 		self.norm_vector_side_left = (self.left_front_lower - self.left_front_top).vector_product(self.left_back_lower - self.left_front_lower)		
@@ -212,7 +232,7 @@ class n3Rectangle(object):
 		return self.middle
   
 	def get_points(self):
-		return [self.left_front_lower, self.left_back_lower, self.right_back_lower, self.right_front_lower, self.left_front_top, self.left_back_top, self.right_back_top, self.right_front_top]		
+		return [self.left_front_lower, self.left_back_lower, self.right_back_lower, self.right_front_lower, self.left_front_top, self.left_back_top, self.right_back_top, self.right_front_top]
 		
 	def lies_inside (self, p):
 		d = self.middle.distance_to(p)
@@ -224,7 +244,34 @@ class n3Rectangle(object):
 			return (p.scalar_product(self.norm_vector_side_back) - self.hesse_back_d) >= 0 and (p.scalar_product(self.norm_vector_side_front) - self.hesse_front_d) >= 0 and \
 				(p.scalar_product(self.norm_vector_side_left) - self.hesse_left_d) >= 0 and (p.scalar_product(self.norm_vector_side_right) - self.hesse_right_d) >= 0 and \
 				(p.scalar_product(self.norm_vector_side_bottom) - self.hesse_bottom_d) >= 0 and (p.scalar_product(self.norm_vector_side_top) - self.hesse_top_d) >= 0
+				
+	def rotate_by_root (self, alpha, beta, gamma):
+		self.left_front_lower = self.left_front_lower.translate_by_degree(alpha, beta, gamma)
+		self.left_back_lower = self.left_back_lower.translate_by_degree(alpha, beta, gamma)
+		self.right_back_lower = self.right_back_lower.translate_by_degree(alpha, beta, gamma)
+		self.right_front_lower = self.right_front_lower.translate_by_degree(alpha, beta, gamma)
+		self.left_front_top = self.left_front_top.translate_by_degree(alpha, beta, gamma)
+		self.left_back_top = self.left_back_top.translate_by_degree(alpha, beta, gamma)
+		self.right_back_top = self.right_back_top.translate_by_degree(alpha, beta, gamma)
+		self.right_front_top = self.right_front_top.translate_by_degree(alpha, beta, gamma)
+		self.update_coords()
+		
+	def translate (self, p):
+		self.left_front_lower = self.left_front_lower + p
+		self.left_back_lower = self.left_back_lower + p
+		self.right_back_lower = self.right_back_lower + p
+		self.right_front_lower = self.right_front_lower + p
+		self.left_front_top = self.left_front_top + p
+		self.left_back_top = self.left_back_top + p
+		self.right_back_top = self.right_back_top + p
+		self.right_front_top = self.right_front_top + p
+		self.update_coords()
 			
+	def rotate_by_self (self, alpha, beta, gamma):
+		middle = self.middle
+		self.translate(middle * -1)
+		self.rotate_by_root(alpha, beta, gamma)
+		self.translate(middle)
   
 		
 class n3AxisParallelRectangle (n3Rectangle):
@@ -351,6 +398,15 @@ class n2Point(object):
 		
 	def get_right_normal (self):
 		return self.__class__(self.y, self.x * -1)
+		
+	def translate_by_degree (self, alpha):
+		""" Im Uhrzeigersinn
+		"""
+		alpha *= -1
+		alpha = radians (alpha)
+		x = round( self.x * cos (alpha) - self.y * sin (alpha), 4)
+		y = round( self.x * sin (alpha) + self.y * cos (alpha), 4)
+		return self.__class__(x, y)		
 
 
 class n2Line (object):
@@ -474,7 +530,12 @@ class n2Rectangle (object):
 			self.right_front, self.left_back = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))
 		self.inner_radius = ((self.right_front - self.left_front)/2).length()
 		self.middle = self.left_front + (self.right_back - self.left_front) / 2
-		self.outer_radius = (self.middle - self.left_front).length()	
+		self.outer_radius = (self.middle - self.left_front).length()
+		self.update_coords()
+		
+		
+	def update_coords (self):
+		self.middle = self.left_front + (self.right_back - self.left_front) / 2
 		self.norm_vector_side_left = (self.left_back - self.left_front).get_right_normal()
 		self.norm_vector_side_left = self.norm_vector_side_left / self.norm_vector_side_left.length()
 		self.norm_vector_side_right = self.norm_vector_side_left * -1
@@ -515,6 +576,27 @@ class n2Rectangle (object):
 		else :
 			return (p.scalar_product(self.norm_vector_side_back) - self.hesse_back_d) >= 0 and (p.scalar_product(self.norm_vector_side_front) - self.hesse_front_d) >= 0 and \
 				(p.scalar_product(self.norm_vector_side_left) - self.hesse_left_d) >= 0 and (p.scalar_product(self.norm_vector_side_right) - self.hesse_right_d) >= 0
+				
+	def rotate_by_root (self, alpha):
+		self.left_front = self.left_front.translate_by_degree(alpha)
+		self.left_back = self.left_back.translate_by_degree(alpha)
+		self.right_back = self.right_back.translate_by_degree(alpha)
+		self.right_front = self.right_front.translate_by_degree(alpha)		
+		self.update_coords()
+		
+	def translate (self, p):
+		self.left_front = self.left_front + p
+		self.left_back = self.left_back + p
+		self.right_back = self.right_back + p
+		self.right_front = self.right_front + p		
+		self.update_coords()
+			
+	def rotate_by_self (self, alpha):
+		middle = self.middle
+		self.translate(middle * -1)
+		self.rotate_by_root(alpha)
+		self.translate(middle)
+  
 
 class n2AxisParallelRectangle (n2Rectangle):
 	""" The lines of the rectangle are parallel to the axis.
