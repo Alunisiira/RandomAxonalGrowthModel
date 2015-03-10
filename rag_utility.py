@@ -5,12 +5,13 @@ Created on Mon Mar 02 20:40:49 2015
 @author: Jan Zelmer
 @mail: jzelmer@gmx.net
 """
-#execfile("rag_geometry.py")
+
 from copy import deepcopy
-from math import sqrt
 from math import pow
+from math import e
 import random
 import numpy as np
+execfile("rag_geometry.py")
 
 random.seed()
 
@@ -946,3 +947,4 @@ class Distances ():
 		""" Returns the distance matrix
 		"""
 		return deepcopy(self.container)
+		
