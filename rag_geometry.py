@@ -8,6 +8,9 @@ Created on Mon Mar 02 17:33:22 2015
 """
 from math import sqrt
 from math import radians
+from math import cos
+from math import sin
+from copy import deepcopy
 
 class n3Point(object):
 	
@@ -55,7 +58,7 @@ class n3Point(object):
 		"""
 		return str("(" + str(self.x) + "," + str(self.y) + "," + str(self.z) + ")")
 		
-	def translate_by_degree (self, alpha, beta, gamma):
+	def rotate_by_degree (self, alpha, beta, gamma):
 		""" Drehung im Uhrzeigersinn
 		"""
 		alpha = radians (alpha)
@@ -142,24 +145,66 @@ class n3Line(object):
 class n3Sphere (object):
 	
 	def __init__ (self, point, radius):
-		self.center = point
+		self.middle = point
 		self.radius = radius
 		
-	def lies_in (self, p):
-		return self.center.distance_to(p) <= self.radius
+	def lies_inside (self, p):
+		return self.middle.distance_to(p) <= self.radius
+		
+	def get_bounding_box (self):
+		return n3AxisParallelRectangle(n3Point(self.middle.x - self.radius, self.middle.y - self.radius, self.middle.z - self.radius), \
+		n3Point(self.middle.x + self.radius, self.middle.y + self.radius, self.middle.z + self.radius))
+		
+	def translate (self, p):
+		self.middle += p
+		
+	def rotate_by_root (self, alpha, beta, gamma):
+		self.middle = self.middle.rotate_by_degree(alpha, beta, gamma)
     
+	def rotate_by_self (self, alpha, beta, gamma):
+		print "Rotating a sphere with the axis aligned on it's center won't do anything."
 				
 class n3Ellipsoid (object):
 	
-	def __init__ (self, center, x, y, z):
-		self.center = center
-		self.x = x
-		self.y = y
-		self.z = z
+	def __init__ (self, middle, rx, ry, rz):
+		self.middle = middle
+		self.rx = rx
+		self.ry = ry
+		self.rz = rz
+		self.alpha = 0
+		self.beta = 0
+		self.gamma = 0
 		
-	def lies_in (self, p):
-		return (p.x * p.x / self.x / self.x + p.y * p.y / self.y / self.y + p.z * p.z / self.z / self.z ) <= 1
+	def lies_inside (self, p):
+		rotated_p = p.rotate(-1 * self.alpha, -1 * self.beta, -1 * self.gamma)
+		x = rotated_p.x - self.middle.x
+		y = rotated_p.y - self.middle.y
+		z = rotated_p.z - self.middle.z
+		return (x * x / self.rx / self.rx + y * y / self.ry / self.ry + z * z / self.rz / self.rz ) <= 1
+		
+	def get_bounding_box (self):
+		return n3AxisParallelRectangle(n3Point(self.middle.x - self.rx, self.middle.y - self.ry, self.middle.z - self.rz), \
+		n3Point(self.middle.x + self.rx, self.middle.y + self.ry, self.middle.z + self.rz))
+		
+	def rotate_by_root (self, alpha, beta, gamma):
+		self.middle = self.middle.rotate(alpha, beta, gamma)
+		self.alpha += alpha
+		self.beta += beta
+		self.gamma += gamma
 	
+	def rotate_by_self (self, alpha, beta, gamma):
+		self.alpha += alpha
+		self.beta += beta
+		self.gamma += gamma
+	
+	def translate (self, p):
+		self.middle += p
+
+
+class n3Pyramid(object):
+	#TODO: implement
+	pass
+
 
 class n3Rectangle(object):
     
@@ -171,37 +216,53 @@ class n3Rectangle(object):
 			points are determined via the distance to coordinate origin
 			and a point on the x axis lying to the right of the rectangle.
 		"""
-		
+		self.points = points
+		x = 0
+		y = 0
+		z = 0
+		for p in points:
+			x = min(x, p.x) 
+			y = min(y, p.y)
+			z = min(z, p.z)
+		translate_vector = n3Point(x, y, z)
+		ps = map(lambda n: n - translate_vector, points)
 		max_y = 0
-		for i in points:
+		for i in ps:
 			if i.y > max_y:
 				max_y = i.y
 		max_x = 0
-		for i in points:
+		for i in ps:
 			if i.x > max_x:
 				max_x = i.x
-
 		d = []
-		for i in points:
+		for i in ps:
 			d.append(i.distance_to (n3Point(0,0,0)))
 		d.sort(lambda x,y: -1 if x < y else 1)			
 		if d[0]==d[1]:
 			#idiotic special case, when rectangle was axis parallel and got rotated by 45 degrees
-			self.left_front_lower, self.right_back_top = self.init_get_extreme_points(points, n3Point(0, 0.1, 0))
-			self.left_back_lower, self.right_front_top = self.init_get_extreme_points(points, n3Point(0, max_y + 0,1, 0))
-			self.right_back_lower, self.left_front_top = self.init_get_extreme_points(points, n3Point(max_x, max_y + 0.1, 0))
-			self.right_front_lower, self.left_back_top = self.init_get_extreme_points(points, n3Point(max_x, 0.1, 0))
+			self.left_front_lower, self.right_back_top = self.init_get_extreme_points(ps, n3Point(0, 0.1, 0))
+			self.left_back_lower, self.right_front_top = self.init_get_extreme_points(ps, n3Point(0, max_y + 0.1, 0))
+			self.right_back_lower, self.left_front_top = self.init_get_extreme_points(ps, n3Point(max_x, max_y + 0.1, 0))
+			self.right_front_lower, self.left_back_top = self.init_get_extreme_points(ps, n3Point(max_x, 0.1, 0))
 		else:
-			self.left_front_lower, self.right_back_top = self.init_get_extreme_points(points, n3Point(0, 0, 0))
-			self.left_back_lower, self.right_front_top = self.init_get_extreme_points(points, n3Point(0, max_y, 0))
-			self.right_back_lower, self.left_front_top = self.init_get_extreme_points(points, n3Point(max_x, max_y, 0))
-			self.right_front_lower, self.left_back_top = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))
+			self.left_front_lower, self.right_back_top = self.init_get_extreme_points(ps, n3Point(0, 0, 0))
+			self.left_back_lower, self.right_front_top = self.init_get_extreme_points(ps, n3Point(0, max_y, 0))
+			self.right_back_lower, self.left_front_top = self.init_get_extreme_points(ps, n3Point(max_x, max_y, 0))
+			self.right_front_lower, self.left_back_top = self.init_get_extreme_points(ps, n3Point(max_x, 0, 0))
+		self.left_front_lower = self.left_front_lower + translate_vector
+		self.left_back_lower = self.left_back_lower + translate_vector
+		self.right_back_lower = self.right_back_lower + translate_vector
+		self.right_front_lower = self.right_front_lower + translate_vector
+		self.left_front_top = self.left_front_top + translate_vector
+		self.left_back_top = self.left_back_top + translate_vector
+		self.right_back_top = self.right_back_top + translate_vector
+		self.right_front_top = self.right_front_top + translate_vector
+		self.compute_hesse_params()			
 		self.inner_radius = ((self.right_front_lower - self.left_front_lower)/2).length()
-		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
-		self.outer_radius = (self.middle - self.left_front_lower).length()	
-		self.update_coords()			
+		self.outer_radius = (self.middle - self.left_front_lower).length()
+		self.diagonal_length = (self.left_front_lower - self.right_back_top).length()
 			
-	def update_coords (self):
+	def compute_hesse_params (self):
 		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
 		self.norm_vector_side_bottom = (self.right_front_lower - self.left_front_lower).vector_product(self.left_back_lower - self.left_front_lower)
 		self.norm_vector_side_bottom = self.norm_vector_side_bottom / self.norm_vector_side_bottom.length()
@@ -217,7 +278,7 @@ class n3Rectangle(object):
 		self.hesse_front_d = self.norm_vector_side_front.scalar_product(self.left_front_lower)
 		self.hesse_back_d = self.norm_vector_side_back.scalar_product(self.right_back_top)
 		self.hesse_right_d = self.norm_vector_side_right.scalar_product(self.right_back_top)
-		self.hesse_top_d = self.norm_vector_side_top.scalar_product(self.right_back_top)
+		self.hesse_top_d = self.norm_vector_side_top.scalar_product(self.right_back_top)		
 		
 	def init_get_extreme_points(self, liste, p):
          l = []
@@ -225,13 +286,8 @@ class n3Rectangle(object):
              l.append((i.distance_to (p), i))
          l.sort(lambda x,y: -1 if x < y else 1)
          return (l[0][1], l[7][1])
-		
-	def get_middle (self):
-		""" Returns the point in the middle of the rectangle
-		"""
-		return self.middle
   
-	def get_points(self):
+	def get_ordered_points(self):
 		return [self.left_front_lower, self.left_back_lower, self.right_back_lower, self.right_front_lower, self.left_front_top, self.left_back_top, self.right_back_top, self.right_front_top]
 		
 	def lies_inside (self, p):
@@ -246,32 +302,47 @@ class n3Rectangle(object):
 				(p.scalar_product(self.norm_vector_side_bottom) - self.hesse_bottom_d) >= 0 and (p.scalar_product(self.norm_vector_side_top) - self.hesse_top_d) >= 0
 				
 	def rotate_by_root (self, alpha, beta, gamma):
-		self.left_front_lower = self.left_front_lower.translate_by_degree(alpha, beta, gamma)
-		self.left_back_lower = self.left_back_lower.translate_by_degree(alpha, beta, gamma)
-		self.right_back_lower = self.right_back_lower.translate_by_degree(alpha, beta, gamma)
-		self.right_front_lower = self.right_front_lower.translate_by_degree(alpha, beta, gamma)
-		self.left_front_top = self.left_front_top.translate_by_degree(alpha, beta, gamma)
-		self.left_back_top = self.left_back_top.translate_by_degree(alpha, beta, gamma)
-		self.right_back_top = self.right_back_top.translate_by_degree(alpha, beta, gamma)
-		self.right_front_top = self.right_front_top.translate_by_degree(alpha, beta, gamma)
-		self.update_coords()
+		self.left_front_lower = self.left_front_lower.rotate_by_degree(alpha, beta, gamma)
+		self.left_back_lower = self.left_back_lower.rotate_by_degree(alpha, beta, gamma)
+		self.right_back_lower = self.right_back_lower.rotate_by_degree(alpha, beta, gamma)
+		self.right_front_lower = self.right_front_lower.rotate_by_degree(alpha, beta, gamma)
+		self.left_front_top = self.left_front_top.rotate_by_degree(alpha, beta, gamma)
+		self.left_back_top = self.left_back_top.rotate_by_degree(alpha, beta, gamma)
+		self.right_back_top = self.right_back_top.rotate_by_degree(alpha, beta, gamma)
+		self.right_front_top = self.right_front_top.rotate_by_degree(alpha, beta, gamma)
+		for p in self.points:
+			p = p.rotate_by_degree(alpha, beta, gamma)
+		self.compute_hesse_params()
 		
 	def translate (self, p):
-		self.left_front_lower = self.left_front_lower + p
-		self.left_back_lower = self.left_back_lower + p
-		self.right_back_lower = self.right_back_lower + p
-		self.right_front_lower = self.right_front_lower + p
-		self.left_front_top = self.left_front_top + p
-		self.left_back_top = self.left_back_top + p
-		self.right_back_top = self.right_back_top + p
-		self.right_front_top = self.right_front_top + p
-		self.update_coords()
+		self.left_front_lower +=  p
+		self.left_back_lower += p
+		self.right_back_lower += p
+		self.right_front_lower += p
+		self.left_front_top += p
+		self.left_back_top += p
+		self.right_back_top += p
+		self.right_front_top += p
+		for pmueh in self.points:
+			pmueh += p 
+		self.compute_hesse_params()
 			
 	def rotate_by_self (self, alpha, beta, gamma):
 		middle = self.middle
 		self.translate(middle * -1)
 		self.rotate_by_root(alpha, beta, gamma)
 		self.translate(middle)
+		
+	def get_bounding_box (self):
+		min_x, min_y, min_z, max_x, max_y, max_z = self.points[0].x, self.points[0].y, self.points[0].z, self.points[0].x, self.points[0].y, self.points[0].z
+		for p in self.points[1:]:
+			min_x = min( min_x, p.x)
+			min_y = min( min_y, p.y)
+			min_z = min( min_y, p.z)
+			max_x = max( max_x, p.x)				
+			max_y = max( max_y, p.y)
+			max_z = max( max_z, p.z)
+		return n3AxisParallelRectangle(n3Point(min_x, min_y, min_z, max_x, max_y, max_z))
   
 		
 class n3AxisParallelRectangle (n3Rectangle):
@@ -302,11 +373,16 @@ class n3AxisParallelRectangle (n3Rectangle):
 		self.right_back_lower, self.left_front_top = self.init_get_extreme_points(points, n3Point(max_x, max_y, 0))
 		self.right_front_lower, self.left_back_top = self.init_get_extreme_points(points, n3Point(max_x, 0, 0))	
 		self.middle = self.left_front_lower + (self.right_back_top - self.left_front_lower) / 2
+		self.points = points
+		self.diagonal_length = (self.left_front_lower - self.right_back_top).length()
 	
 	def lies_inside (self, p1):
 		return self.left_front_lower.x <= p1.x <= self.right_front_lower.x and  \
 			self.left_front_lower.y <= p1.y <= self.left_back_lower.y and \
 			self.left_front_lower.z <= p1.z <= self.left_front_top.z
+			
+	def get_bounding_box (self):
+		return deepcopy(self)
 
 
 class n2Point(object):
@@ -485,17 +561,17 @@ class n2Line (object):
 class n2Sphere (object):
 	
 	def __init__ (self, point, radius):
-		self.center = point
+		self.middle = point
 		self.radius = radius
 		
 	def lies_in (self, p):
-		return self.center.distance_to(p) <= self.radius
+		return self.middle.distance_to(p) <= self.radius
     
 				
 class n2Ellipsoid (object):
 	
-	def __init__ (self, center, x, y):
-		self.center = center
+	def __init__ (self, middle, x, y):
+		self.middle = middle
 		self.x = x
 		self.y = y		
 		
@@ -531,10 +607,10 @@ class n2Rectangle (object):
 		self.inner_radius = ((self.right_front - self.left_front)/2).length()
 		self.middle = self.left_front + (self.right_back - self.left_front) / 2
 		self.outer_radius = (self.middle - self.left_front).length()
-		self.update_coords()
+		self.compute_hesse_params()
 		
 		
-	def update_coords (self):
+	def compute_hesse_params (self):
 		self.middle = self.left_front + (self.right_back - self.left_front) / 2
 		self.norm_vector_side_left = (self.left_back - self.left_front).get_right_normal()
 		self.norm_vector_side_left = self.norm_vector_side_left / self.norm_vector_side_left.length()
@@ -582,14 +658,14 @@ class n2Rectangle (object):
 		self.left_back = self.left_back.translate_by_degree(alpha)
 		self.right_back = self.right_back.translate_by_degree(alpha)
 		self.right_front = self.right_front.translate_by_degree(alpha)		
-		self.update_coords()
+		self.compute_hesse_params()
 		
 	def translate (self, p):
 		self.left_front = self.left_front + p
 		self.left_back = self.left_back + p
 		self.right_back = self.right_back + p
 		self.right_front = self.right_front + p		
-		self.update_coords()
+		self.compute_hesse_params()
 			
 	def rotate_by_self (self, alpha):
 		middle = self.middle
